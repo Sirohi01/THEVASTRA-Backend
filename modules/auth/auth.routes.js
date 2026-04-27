@@ -7,6 +7,7 @@ router.post('/register', register);
 router.post('/login', login);
 router.get('/refresh', refreshToken);
 router.post('/logout', logout);
+router.post('/forgot-password', require('./auth.controller').forgotPassword);
 router.put('/profile', protect, updateProfile);
 router.get('/profile/summary', protect, require('./auth.controller').getProfileSummary);
 

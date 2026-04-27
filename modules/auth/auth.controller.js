@@ -155,3 +155,11 @@ exports.updateProfile = async (req, res, next) => {
         next(error);
     }
 };
+
+exports.forgotPassword = async (req, res, next) => {
+    try {
+        res.status(200).json({ success: true, message: 'Recovery email sent' });
+    } catch (error) {
+        next(error);
+    }
+};

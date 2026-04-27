@@ -11,10 +11,24 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 
-// Middlewares
+const allowedOrigins = [
+    process.env.CLIENT_URL,
+    'https://thevastrahouse.netlify.app',
+    'http://localhost:3000'
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
-    credentials: true
+    origin: function (origin, callback) {
+        // allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            return callback(null, true); // Temporarily allow all for debugging or use strict list
+        }
+        return callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(helmet({
     contentSecurityPolicy: false,
