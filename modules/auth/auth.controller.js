@@ -6,6 +6,12 @@ const generateTokens = (userId) => {
     const refreshToken = jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
     return { accessToken, refreshToken };
 };
+const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+};
 
 exports.register = async (req, res, next) => {
     try {
@@ -16,16 +22,11 @@ exports.register = async (req, res, next) => {
         }
         const user = await User.create({ firstName, lastName, email, password });
         const { accessToken, refreshToken } = generateTokens(user._id);
-        
+
         user.refreshToken = refreshToken;
         await user.save();
 
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        });
+        res.cookie('refreshToken', refreshToken, cookieOptions);
 
         res.status(201).json({
             success: true,
@@ -55,12 +56,7 @@ exports.login = async (req, res, next) => {
         user.refreshToken = refreshToken;
         await user.save();
 
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        });
+        res.cookie('refreshToken', refreshToken, cookieOptions);
 
         res.status(200).json({
             success: true,
@@ -94,12 +90,7 @@ exports.refreshToken = async (req, res, next) => {
         user.refreshToken = newRefreshToken;
         await user.save();
 
-        res.cookie('refreshToken', newRefreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        });
+        res.cookie('refreshToken', newRefreshToken, cookieOptions);
 
         res.setHeader('Cache-Control', 'no-store');
         res.status(200).json({ success: true, accessToken });
@@ -107,6 +98,7 @@ exports.refreshToken = async (req, res, next) => {
         res.status(403).json({ message: 'Refresh token expired' });
     }
 };
+
 const Order = require('../order/order.model');
 
 exports.getProfileSummary = async (req, res, next) => {
@@ -114,7 +106,7 @@ exports.getProfileSummary = async (req, res, next) => {
         const orderCount = await Order.countDocuments({ user: req.user._id });
         const wishlistCount = req.user.wishlist.length;
         const addressCount = req.user.addresses.length;
-        
+
         const recentOrders = await Order.find({ user: req.user._id })
             .sort('-createdAt')
             .limit(3)
@@ -144,7 +136,7 @@ exports.logout = async (req, res, next) => {
                 await user.save();
             }
         }
-        res.clearCookie('refreshToken');
+        res.clearCookie('refreshToken', cookieOptions);
         res.status(200).json({ success: true, message: 'Logged out successfully' });
     } catch (error) {
         next(error);
