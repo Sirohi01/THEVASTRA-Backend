@@ -7,8 +7,6 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 
 const app = express();
-
-// IMPORTANT: Body parsers with increased limits must be BEFORE routes
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
@@ -19,7 +17,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(helmet({
-    contentSecurityPolicy: false, // For easier integration with third-party images
+    contentSecurityPolicy: false,
 }));
 app.use(morgan('dev'));
 
