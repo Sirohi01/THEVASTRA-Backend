@@ -1,4 +1,5 @@
 const Product = require('./product.model');
+const mongoose = require('mongoose');
 const slugify = require('slugify');
 const { uploadToCloudinary } = require('../../utils/cloudinary');
 
@@ -99,7 +100,14 @@ exports.getProducts = async (req, res, next) => {
 
 exports.getProductBySlug = async (req, res, next) => {
     try {
-        const product = await Product.findOne({ slug: req.params.slug }).populate('category', 'name');
+        const { slug } = req.params;
+        let product = await Product.findOne({ slug }).populate('category', 'name');
+        
+        // Fallback: If not found by slug, try finding by ID (in case ID was passed)
+        if (!product && mongoose.Types.ObjectId.isValid(slug)) {
+            product = await Product.findById(slug).populate('category', 'name');
+        }
+
         if (!product) return res.status(404).json({ message: 'Product not found' });
         res.status(200).json({ success: true, product });
     } catch (error) {
