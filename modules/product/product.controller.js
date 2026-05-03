@@ -37,17 +37,9 @@ exports.createProduct = async (req, res, next) => {
         }
 
         const product = await Product.create({
-            name,
-            slug,
-            description,
-            category,
-            basePrice,
-            variants,
-            images,
-            tags,
-            metadata,
-            isFeatured: isFeatured || false,
-            isNewArrival: isNewArrival || false
+            name, slug, description, category, basePrice, variants, images, tags, metadata,
+            isFeatured: isFeatured === true || isFeatured === 'true',
+            isNewArrival: isNewArrival === true || isNewArrival === 'true'
         });
 
         res.status(201).json({ success: true, product });
@@ -117,43 +109,43 @@ exports.getProductBySlug = async (req, res, next) => {
 
 exports.updateProduct = async (req, res, next) => {
     try {
-        let { name, image, images, stock, sku, variants, basePrice } = req.body;
-        
-        // Handle image uploads
-        if (image && image.startsWith('data:image')) {
-            const uploaded = await uploadToCloudinary(image, 'products');
-            req.body.images = [uploaded];
-            delete req.body.image;
-        }
-
-        // Handle sku and stock updates if they are at root
-        if ((sku || stock !== undefined) && (!variants || variants.length === 0)) {
-            const product = await Product.findById(req.params.id);
-            if (product && product.variants && product.variants.length > 0) {
-                const updatedVariants = [...product.variants];
-                updatedVariants[0].sku = sku || updatedVariants[0].sku;
-                updatedVariants[0].stock = stock !== undefined ? stock : updatedVariants[0].stock;
-                updatedVariants[0].price = basePrice || updatedVariants[0].price;
-                req.body.variants = updatedVariants;
-            } else {
-                 req.body.variants = [{
-                    size: 'Standard',
-                    color: 'Default',
-                    sku: sku || `SKU-${Date.now()}`,
-                    stock: stock || 0,
-                    price: basePrice || 0
-                }];
-            }
-        }
+        const { name, description, category, basePrice, variants, images, isFeatured, isNewArrival, tags, metadata } = req.body;
+        const updateData = {};
 
         if (name) {
-            req.body.slug = slugify(name, { lower: true });
+            updateData.name = name;
+            updateData.slug = slugify(name, { lower: true });
+        }
+        if (description) updateData.description = description;
+        if (category) updateData.category = category;
+        if (basePrice !== undefined) updateData.basePrice = basePrice;
+        if (tags) updateData.tags = tags;
+        if (metadata) updateData.metadata = metadata;
+        
+        // Handle flags explicitly
+        if (isFeatured !== undefined) updateData.isFeatured = isFeatured === true || isFeatured === 'true';
+        if (isNewArrival !== undefined) updateData.isNewArrival = isNewArrival === true || isNewArrival === 'true';
+
+        // Process variants to ensure numbers
+        if (variants && variants.length > 0) {
+            updateData.variants = variants.map(v => ({
+                size: v.size,
+                color: v.color,
+                sku: v.sku,
+                stock: Number(v.stock) || 0,
+                price: Number(v.price) || 0,
+                discountPrice: v.discountPrice ? Number(v.discountPrice) : undefined
+            }));
         }
 
-        const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+        // Image handling (already in req.body.images if processed by middleware or frontend)
+        if (images) updateData.images = images;
+
+        const product = await Product.findByIdAndUpdate(req.params.id, updateData, {
             new: true,
             runValidators: true
         });
+        
         if (!product) return res.status(404).json({ message: 'Product not found' });
         res.status(200).json({ success: true, product });
     } catch (error) {
