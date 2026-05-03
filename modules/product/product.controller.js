@@ -4,7 +4,7 @@ const { uploadToCloudinary } = require('../../utils/cloudinary');
 
 exports.createProduct = async (req, res, next) => {
     try {
-        let { name, description, category, basePrice, variants, images, image, stock, sku, tags, metadata, isFeatured } = req.body;
+        let { name, description, category, basePrice, variants, images, image, stock, sku, tags, metadata, isFeatured, isNewArrival } = req.body;
         const slug = slugify(name, { lower: true });
 
         // Handle single image from frontend if sent as 'image'
@@ -46,7 +46,8 @@ exports.createProduct = async (req, res, next) => {
             images,
             tags,
             metadata,
-            isFeatured: isFeatured || false
+            isFeatured: isFeatured || false,
+            isNewArrival: isNewArrival || false
         });
 
         res.status(201).json({ success: true, product });
@@ -81,7 +82,7 @@ exports.getProducts = async (req, res, next) => {
         if (sort === 'price-low') sortQuery = { basePrice: 1 };
         if (sort === 'price-high') sortQuery = { basePrice: -1 };
         if (sort === 'featured') sortQuery = { isFeatured: -1, createdAt: -1 };
-        if (sort === 'newest') sortQuery = { createdAt: -1 };
+        if (sort === 'newest') sortQuery = { isNewArrival: -1, createdAt: -1 };
         if (sort === 'discount') sortQuery = { 'variants.discountPrice': 1 }; // Or some other logic
 
         const products = await Product.find(query)

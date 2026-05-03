@@ -21,6 +21,7 @@ const productSchema = new mongoose.Schema({
     variants: [variantSchema],
     basePrice: { type: Number, required: true },
     isFeatured: { type: Boolean, default: false },
+    isNewArrival: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: true },
     ratings: { type: Number, default: 0 },
     numReviews: { type: Number, default: 0 },
