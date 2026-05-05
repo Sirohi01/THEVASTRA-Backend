@@ -1,4 +1,6 @@
 const Order = require('./order.model');
+const Product = require('../product/product.model');
+const { decreaseStock } = require('../product/inventory.service');
 const { generateInvoice } = require('../../utils/invoice.service');
 
 exports.createOrder = async (req, res, next) => {
@@ -9,6 +11,20 @@ exports.createOrder = async (req, res, next) => {
             return res.status(400).json({ message: 'No order items' });
         }
 
+        // 1. Validate Stock for all items
+        for (const item of orderItems) {
+            const product = await Product.findById(item.product);
+            if (!product) return res.status(404).json({ message: `Product ${item.name} not found` });
+            
+            const variant = product.variants.find(v => v.size === item.variant?.size && v.color === item.variant?.color);
+            if (!variant) return res.status(400).json({ message: `Variant for ${item.name} not found` });
+            
+            if (variant.stock < item.quantity) {
+                return res.status(400).json({ message: `Insufficient stock for ${item.name} (${item.variant.size}/${item.variant.color})` });
+            }
+        }
+
+        // 2. Create Order
         const order = new Order({
             user: req.user._id,
             orderItems,
@@ -22,6 +38,12 @@ exports.createOrder = async (req, res, next) => {
         });
 
         const createdOrder = await order.save();
+
+        // 3. For COD, decrease stock immediately
+        if (paymentMethod === 'COD') {
+            await decreaseStock(orderItems);
+        }
+
         res.status(201).json({ success: true, order: createdOrder });
     } catch (error) {
         next(error);
