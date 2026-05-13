@@ -146,8 +146,31 @@ exports.updateProduct = async (req, res, next) => {
             }));
         }
 
-        // Image handling (already in req.body.images if processed by middleware or frontend)
-        if (images) updateData.images = images;
+        // Image handling: process all images in the array
+        if (images && images.length > 0) {
+            const processedImages = [];
+            for (const img of images) {
+                // If it's a new base64 image
+                if (typeof img === 'string' && img.startsWith('data:image')) {
+                    const uploaded = await uploadToCloudinary(img, 'products');
+                    processedImages.push(uploaded);
+                } 
+                // If it's an existing image object from frontend (with url/public_id)
+                else if (typeof img === 'object' && img.url) {
+                    processedImages.push(img);
+                }
+                // If it's just a URL string (from our new frontend update)
+                else if (typeof img === 'string' && img.startsWith('http')) {
+                    // Try to find if this URL already exists in current product to keep its public_id
+                    // but for simplicity, we can just keep the URL. 
+                    // Better to find the original object if possible.
+                    processedImages.push({ url: img, public_id: 'existing' }); 
+                }
+            }
+            updateData.images = processedImages;
+        } else if (images) {
+            updateData.images = [];
+        }
 
         const product = await Product.findByIdAndUpdate(req.params.id, updateData, {
             new: true,
